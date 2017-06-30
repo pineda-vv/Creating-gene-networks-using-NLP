@@ -16,6 +16,13 @@ from nltk.tokenize import word_tokenize
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
+def abstract_dataframe(filename, output_name):
+    pmid_ab_dict = medline_parser(filename)
+    df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
+    df.columns = ['PMID', 'Abstract']
+    df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
+    df.to_csv(output_name, sep='\t')
+
 def medline_parser(filename):
     """input - downloaded medline text file from pubmed"""
     pmid_abstract_dict = {}
@@ -23,7 +30,7 @@ def medline_parser(filename):
         for record in Medline.parse(handle):
             if 'AB' in record.keys():
                 pmid, abstract = record['PMID'], record['AB']
-                rpmid_abstract_dict[pmid] = abstract
+                pmid_abstract_dict[pmid] = abstract
         return pmid_abstract_dict
 
 def dictionary_compiler(dictionary):
@@ -31,6 +38,7 @@ def dictionary_compiler(dictionary):
     for k, v in abstract_dict.iteritems():
         token = tokenize_abstract(v)
         tokenized_dict[k] = token
+
 
 def tokenize_abstract(abstract):
     stop = stopwords.words('english')
@@ -43,5 +51,5 @@ def tokenize_abstract(abstract):
 
 
 if __name__ == "__main__":
-    filename_list = ["pubmed_result_medline.txt", "pubmed_result_plos_med.txt"]
-    # for filename in filename_list:
+    filename_list = ["../capstone_files/pubmed_result_medline.txt", "pubmed_result_plos_med.txt"]
+    abstract_dataframe(filename_list[0],'plos_genetics.csv')
