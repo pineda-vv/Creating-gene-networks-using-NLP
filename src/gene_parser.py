@@ -33,7 +33,7 @@ def gene_pair_finder(df, tokenized_col_name):
     return df
 
 def if_gene_(df_column):
-    genes = generator()
+    genes = generator() # generates gene set
     gene_pairs = set()
     for item in abstract.split():
         word = item.strip('.').strip(',').lower()
@@ -45,3 +45,4 @@ def if_gene_(df_column):
         return None
 
 if __name__ == "__main__":
+    generator()
