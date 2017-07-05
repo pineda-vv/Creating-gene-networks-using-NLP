@@ -12,7 +12,10 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+import networkx as nx
+import vtk
 
 def abstract_dataframe(filename):
     """
@@ -22,10 +25,13 @@ def abstract_dataframe(filename):
     pmid_ab_dict = medline_parser(filename)
     df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
     df.columns = ['PMID', 'Abstract']
+    """tokenize abstract for NMF analysis"""
     df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
     df['gene_pairs'] = df['tokenized_abs'].apply(if_gene_)
-    print df.head()
-    # df.to_csv(output_name, sep='\t')
+    """create dictionary for networx_work"""
+    gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
+    network_graph(gene_dict)
+
 
 def medline_parser(filename):
     """input - medline text file from pubmed"""
@@ -81,7 +87,11 @@ def if_gene_(abstract):
     else:
         return None
 
-
+def network_graph(net_dict=None):
+    if net_dict == None:
+        net_dict = {}
+    else:
+        G = nx.from_dict_of_lists(net_dict)
 
 if __name__ == "__main__":
     # filename_list = ["../capstone_files/pubmed_result_medline.txt", "pubmed_result_plos_med.txt"]
