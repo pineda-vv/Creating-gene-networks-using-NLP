@@ -6,8 +6,8 @@ import nltk
 import os
 import glob
 import unicodedata
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.decomposition import NMF, LatentDirichletAllocation
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
@@ -31,6 +31,7 @@ def abstract_dataframe(filename):
     """create dictionary for networx_work"""
     gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
     network_graph(gene_dict)
+    topic_extraction(df, 'Abstract')
 
 
 def medline_parser(filename):
@@ -92,7 +93,43 @@ def network_graph(net_dict=None):
         net_dict = {}
     else:
         G = nx.from_dict_of_lists(net_dict)
+    plt.figure(num=None, figsize=(100, 100), dpi=80, facecolor='w', edgecolor='k')
+    nx.draw_networkx(G, node_shape='o', with_labels=True, alpha=0.5, edge_color='k', cmap=plt.cm.GnBu)
+    plt.show()
+
+def topic_extraction(df, col_name):
+    tfidf_vectorizer = TfidfVectorizer(max_df=0.95, min_df=2,
+                                       max_features=200,
+                                       stop_words='english')
+    tfidf = tfidf_vectorizer.fit_transform(df[col_name])
+
+    tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2,
+                                    max_features=200,
+                                    stop_words='english')
+    tf = tf_vectorizer.fit_transform(df[col_name])
+    nmf = NMF(n_components=20, random_state=1,
+              alpha=.1, l1_ratio=.5).fit(tfidf)
+    tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    print_top_words(nmf, tfidf_feature_names)
+
+    lda = LatentDirichletAllocation(n_topics=20, max_iter=5,
+                                    learning_method='online',
+                                    learning_offset=50.,
+                                    random_state=0)
+    lda.fit(tf)
+
+    print("\nTopics in LDA model:")
+    tf_feature_names = tf_vectorizer.get_feature_names()
+    print_top_words(lda, tf_feature_names)
+
+def print_top_words(model, feature_names, n_top_words=20):
+    for topic_idx, topic in enumerate(model.components_):
+        print("Topic #%d:" % topic_idx)
+        print(" ".join([feature_names[i]
+                        for i in topic.argsort()[:-n_top_words - 1:-1]]))
+    print('End')
+
 
 if __name__ == "__main__":
     # filename_list = ["../capstone_files/pubmed_result_medline.txt", "pubmed_result_plos_med.txt"]
-    abstract_dataframe("../capstone_files/plos_gen_test.txt")
+    abstract_dataframe("../capstone_files/pubmed_result_medline.txt")
