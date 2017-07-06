@@ -27,22 +27,22 @@ def abstract_dataframe(filename):
     pmid_ab_dict = medline_parser(filename)
     df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
     df.columns = ['PMID', 'Abstract']
-    """tokenize abstract for gene-network analysis"""
+    """
+    Parallelized tokenizer and gene pairs functions gene-network analysis.
+    Original code used are commented out
+    """
     # df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
-    t0 = time()
     df = parallel_tokenizer(df)
     df = parallel_genepairs(df)
-    print 'elapsed time for parallelization {0:.2f}'.format(time()- t0)
-    t1 = time()
     # df['gene_pairs'] = df['tokenized_abs'].apply(_if_gene)
     """create dictionary for networx_work"""
     gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
     network_graph(gene_dict)
-    print "from gene_pairs on total time for process {0:.3f} minutes".format((time()-t1))
+    # print "from gene_pairs on total time for process {0:.3f} minutes".format((time()-t1))
     # topic_extraction(df, 'Abstract')
 
 def medline_parser(filename):
-    """input - medline text file from pubmed"""
+    """extracts info from medline text file from pubmed"""
     pmid_abstract_dict = {}
     with open(filename) as handle:
         for record in Medline.parse(handle):
@@ -52,12 +52,14 @@ def medline_parser(filename):
         return pmid_abstract_dict
 
 def parallel_tokenizer(df):
+    """parallelizes the tokenizer function"""
     pool = mp.Pool(processes=4)
     df['tokenized_abs'] = pool.map(_tokenize_abstract, df['Abstract'])
     pool.terminate()
     return df
 
 def parallel_genepairs(df):
+    """parallelizes the gene pairing"""
     pool = mp.Pool(processes=4)
     df['gene_pairs'] = pool.map(_if_gene, df['tokenized_abs'])
     pool.terminate()
@@ -83,16 +85,25 @@ def _generator():
     return genes
 
 def gene_names(filepath, complete=True):
-    """creates set from gene list file downloaded from UCSC Genome Browser"""
+    """creates a set from 2 gene list files downloaded from the UCSC Genome Browser"""
     if complete:
         df_ucsc = pd.read_csv(filepath, sep='\t', header=None)
-        df_ucsc.columns = ['number', 'gene_name', 'locus_link', 'ref_seq_num', 'genbank', 'uniprot', 'taxon']
-        gene_ucsc = set([str(name).lower() for name in df_ucsc["gene_name"] if len(str(name)) >1])
+        df_ucsc.columns = (
+                ['number', 'gene_name', 'locus_link',
+                 'ref_seq_num', 'genbank', 'uniprot', 'taxon']
+            )
+        gene_ucsc = set(
+                [str(name).lower() for name in df_ucsc["gene_name"]
+                if len(str(name)) >1]
+            )
         return gene_ucsc
     else:
         df_syn = pd.read_csv(filepath, sep='\t', header=None)
         df_syn.columns = ['number', 'gene_name']
-        gene_ucsc = set([str(name).lower() for name in df_syn["gene_name"] if len(str(name)) >1])
+        gene_ucsc = set(
+                [str(name).lower() for name in df_syn["gene_name"]
+                if len(str(name)) >1]
+            )
         return gene_ucsc
 
 def _if_gene(abstract):
@@ -108,16 +119,22 @@ def _if_gene(abstract):
         return None
 
 def network_graph(net_dict=None):
+    """builds and visualizes networkx Graph for gene networks"""
     if net_dict == None:
         net_dict = {}
     else:
         G = nx.from_dict_of_lists(net_dict)
     plt.figure(num=None, figsize=(30, 30), dpi=80, facecolor='w', edgecolor='c')
     nx.draw_networkx(G, with_labels=True, alpha=0.5, edge_color='c', cmap=plt.cm.GnBu)
-    plt.savefig("../data/plos_gen.png", bbox_inches='tight')
+    # plt.savefig("../data/plos_gen.png", bbox_inches='tight')
     plt.show()
 
 def topic_extraction(df, col_name):
+    """
+    Two algorithms for topic extraction -
+    NMF and LatentDirichletAllocation(LDA).
+    Need to tie in with K-means clustering
+    """
     tfidf_vectorizer = TfidfVectorizer(max_df=0.95, min_df=2,
                                        max_features=200,
                                        stop_words='english')
