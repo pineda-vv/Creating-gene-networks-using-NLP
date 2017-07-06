@@ -1,7 +1,9 @@
+from __future__ import division
 from Bio import Medline
 import pandas as pd
 import string
 import numpy as np
+import multiprocessing as mp
 import nltk
 import os
 import glob
@@ -12,8 +14,8 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from time import time
 import matplotlib.pyplot as plt
-plt.style.use('ggplot')
 import networkx as nx
 import vtk
 
@@ -25,14 +27,19 @@ def abstract_dataframe(filename):
     pmid_ab_dict = medline_parser(filename)
     df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
     df.columns = ['PMID', 'Abstract']
-    """tokenize abstract for NMF analysis"""
-    df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
-    df['gene_pairs'] = df['tokenized_abs'].apply(if_gene_)
+    """tokenize abstract for gene-network analysis"""
+    # df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
+    t0 = time()
+    df = parallel_tokenizer(df)
+    df = parallel_genepairs(df)
+    print 'elapsed time for parallelization {0:.2f}'.format(time()- t0)
+    t1 = time()
+    # df['gene_pairs'] = df['tokenized_abs'].apply(_if_gene)
     """create dictionary for networx_work"""
     gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
     network_graph(gene_dict)
-    topic_extraction(df, 'Abstract')
-
+    print "from gene_pairs on total time for process {0:.3f} minutes".format((time()-t1))
+    # topic_extraction(df, 'Abstract')
 
 def medline_parser(filename):
     """input - medline text file from pubmed"""
@@ -44,7 +51,19 @@ def medline_parser(filename):
                 pmid_abstract_dict[pmid] = abstract
         return pmid_abstract_dict
 
-def tokenize_abstract(abstract):
+def parallel_tokenizer(df):
+    pool = mp.Pool(processes=4)
+    df['tokenized_abs'] = pool.map(_tokenize_abstract, df['Abstract'])
+    pool.terminate()
+    return df
+
+def parallel_genepairs(df):
+    pool = mp.Pool(processes=4)
+    df['gene_pairs'] = pool.map(_if_gene, df['tokenized_abs'])
+    pool.terminate()
+    return df
+
+def _tokenize_abstract(abstract):
     """Abstract tokenizer"""
     stop = stopwords.words('english')
     clean_abstract = abstract.lower().translate(None, string.punctuation)
@@ -54,7 +73,7 @@ def tokenize_abstract(abstract):
     clean_words = [w for w in stemmed_words if w not in stopwords.words('english')]
     return ' '.join(clean_words)
 
-def generator():
+def _generator():
     """gene names generator"""
     filename_1 = '../capstone_files/ucsc_downloads/gene.txt'
     filename_2 = '../capstone_files/ucsc_downloads/geneSynonym.txt'
@@ -76,8 +95,8 @@ def gene_names(filepath, complete=True):
         gene_ucsc = set([str(name).lower() for name in df_syn["gene_name"] if len(str(name)) >1])
         return gene_ucsc
 
-def if_gene_(abstract):
-    genes = generator() # generates gene set
+def _if_gene(abstract):
+    genes = _generator() # generates gene set
     gene_pairs = set()
     for item in abstract.split():
         word = item.strip('.').strip(',').lower()
@@ -93,8 +112,9 @@ def network_graph(net_dict=None):
         net_dict = {}
     else:
         G = nx.from_dict_of_lists(net_dict)
-    plt.figure(num=None, figsize=(100, 100), dpi=80, facecolor='w', edgecolor='k')
-    nx.draw_networkx(G, node_shape='o', with_labels=True, alpha=0.5, edge_color='k', cmap=plt.cm.GnBu)
+    plt.figure(num=None, figsize=(30, 30), dpi=80, facecolor='w', edgecolor='c')
+    nx.draw_networkx(G, with_labels=True, alpha=0.5, edge_color='c', cmap=plt.cm.GnBu)
+    plt.savefig("../data/plos_gen.png", bbox_inches='tight')
     plt.show()
 
 def topic_extraction(df, col_name):
@@ -108,16 +128,20 @@ def topic_extraction(df, col_name):
                                     stop_words='english')
     tf = tf_vectorizer.fit_transform(df[col_name])
     nmf = NMF(n_components=20, random_state=1,
-              alpha=.1, l1_ratio=.5).fit(tfidf)
+            alpha=.1, l1_ratio=.5)
     tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    nmf_w = nmf.fit_transform(tfidf)
+    nmf_h = nmf.components_
+    tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    print("\nTopics in NMF model:")
     print_top_words(nmf, tfidf_feature_names)
 
     lda = LatentDirichletAllocation(n_topics=20, max_iter=5,
-                                    learning_method='online',
-                                    learning_offset=50.,
-                                    random_state=0)
+                                learning_method='online',
+                                learning_offset=50.,
+                                random_state=0,
+                                n_jobs=-1)
     lda.fit(tf)
-
     print("\nTopics in LDA model:")
     tf_feature_names = tf_vectorizer.get_feature_names()
     print_top_words(lda, tf_feature_names)
@@ -131,5 +155,7 @@ def print_top_words(model, feature_names, n_top_words=20):
 
 
 if __name__ == "__main__":
-    # filename_list = ["../capstone_files/pubmed_result_medline.txt", "pubmed_result_plos_med.txt"]
+    """first file is PLOS Genetics abstract through June 2017"""
     abstract_dataframe("../capstone_files/pubmed_result_medline.txt")
+    # abstract_dataframe("../capstone_files/pubmed_result_plos_med.txt")
+    # abstract_dataframe("../capstone_files/pubmed_result_plos_one.txt")
