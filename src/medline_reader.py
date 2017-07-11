@@ -8,16 +8,15 @@ import nltk
 import os
 import glob
 import unicodedata
+from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from time import time
 import matplotlib.pyplot as plt
 import networkx as nx
-import vtk
 
 def abstract_dataframe(filename):
     """
@@ -31,15 +30,14 @@ def abstract_dataframe(filename):
     Parallelized tokenizer and gene pairs functions gene-network analysis.
     Original code used are commented out
     """
-    # df['tokenized_abs'] = df['Abstract'].apply(tokenize_abstract)
     df = parallel_tokenizer(df)
     df = parallel_genepairs(df)
-    # df['gene_pairs'] = df['tokenized_abs'].apply(_if_gene)
     """create dictionary for networx_work"""
+    df = topic_extraction(df, 'Abstract') # after topic extraction
+    df.to_csv('metabolism_5years_tokenized.csv')
     gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
     network_graph(gene_dict)
-    # print "from gene_pairs on total time for process {0:.3f} minutes".format((time()-t1))
-    # topic_extraction(df, 'Abstract')
+
 
 def medline_parser(filename):
     """extracts info from medline text file from pubmed"""
@@ -77,8 +75,8 @@ def _tokenize_abstract(abstract):
 
 def _generator():
     """gene names generator"""
-    filename_1 = '../capstone_files/ucsc_downloads/gene.txt'
-    filename_2 = '../capstone_files/ucsc_downloads/geneSynonym.txt'
+    filename_1 = 'gene.txt'
+    filename_2 = 'geneSynonym.txt'
     gene_set_1 = gene_names(filename_1)
     gene_syn = gene_names(filename_2, complete=False)
     genes = gene_set_1 | gene_syn
@@ -126,8 +124,7 @@ def network_graph(net_dict=None):
         G = nx.from_dict_of_lists(net_dict)
     plt.figure(num=None, figsize=(30, 30), dpi=80, facecolor='w', edgecolor='c')
     nx.draw_networkx(G, with_labels=True, alpha=0.5, edge_color='c', cmap=plt.cm.GnBu)
-    # plt.savefig("../data/plos_gen.png", bbox_inches='tight')
-    plt.show()
+    plt.savefig("metabolism_5years.png", bbox_inches='tight')
 
 def topic_extraction(df, col_name):
     """
@@ -149,9 +146,12 @@ def topic_extraction(df, col_name):
     tfidf_feature_names = tfidf_vectorizer.get_feature_names()
     nmf_w = nmf.fit_transform(tfidf)
     nmf_h = nmf.components_
-    tfidf_feature_names = tfidf_vectorizer.get_feature_names()
+    df['labels'] = nmf_w.argmax(axis=1) # this was the right code to get labels/clusters
+
+
     print("\nTopics in NMF model:")
     print_top_words(nmf, tfidf_feature_names)
+
 
     lda = LatentDirichletAllocation(n_topics=20, max_iter=5,
                                 learning_method='online',
@@ -159,9 +159,11 @@ def topic_extraction(df, col_name):
                                 random_state=0,
                                 n_jobs=-1)
     lda.fit(tf)
+    df['perplexity'] = lda.perplexity(tf)
     print("\nTopics in LDA model:")
     tf_feature_names = tf_vectorizer.get_feature_names()
     print_top_words(lda, tf_feature_names)
+    return df
 
 def print_top_words(model, feature_names, n_top_words=20):
     for topic_idx, topic in enumerate(model.components_):
@@ -173,6 +175,10 @@ def print_top_words(model, feature_names, n_top_words=20):
 
 if __name__ == "__main__":
     """first file is PLOS Genetics abstract through June 2017"""
-    abstract_dataframe("../capstone_files/pubmed_result_medline.txt")
+    # abstract_dataframe("../capstone_files/pubmed_result_medline.txt")
     # abstract_dataframe("../capstone_files/pubmed_result_plos_med.txt")
     # abstract_dataframe("../capstone_files/pubmed_result_plos_one.txt")
+    # abstract_dataframe("../capstone_files/nature_genetics_all.txt")
+    """genetics search term - filter reviews and last 5 years"""
+    # abstract_dataframe("genetics_search_reviews_5years.txt")
+    abstract_dataframe("metabolism_5year_reviews.txt")
