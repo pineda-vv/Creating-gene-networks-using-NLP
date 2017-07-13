@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from sklearn.decomposition import NMF, LatentDirichletAllocation
+from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from time import time
@@ -55,19 +55,23 @@ def topic_extraction(df, col_name):
                                        max_features=200,
                                        stop_words='english')
     tfidf = tfidf_vectorizer.fit_transform(df[col_name])
-
+    print tfidf.shape
     # tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2,
     #                                 max_features=200,
     #                                 stop_words='english')
     # tf = tf_vectorizer.fit_transform(df[col_name])
+
     nmf = NMF(n_components=20, random_state=1,
             alpha=.1, l1_ratio=.5)
     tfidf_feature_names = tfidf_vectorizer.get_feature_names()
     nmf_w = nmf.fit_transform(tfidf)
+    nmf_w_short = nmf_w[:5000, :]
     nmf_h = nmf.components_
     df['labels'] = nmf_w.argmax(axis=1) # this was the right code to get labels/clusters
     labels = df['labels'].values
-    clustering_algorithm(tfidf, labels)
+    X_short = tfidf[:1000, :]
+    clustering_algorithm(nmf_w_short, labels)
+
     # tsne_algorithm(tfidf) # feed the tsne algorithm
     # sns.distplot(df['labels'], kde=True)
     # plt.show()
@@ -97,24 +101,15 @@ def print_top_words(model, feature_names, n_top_words=20):
     print('End')
 
 def clustering_algorithm(tfidf, labels):
-    num_clusters = 20
-    num_seeds = 20
-    max_iterations = 300
-    tsne_num_components = 20
-    # km = KMeans(n_clusters=num_clusters, algorithm='full', n_jobs=-1, verbose=1)
-    # mod = km.fit_transform(tfidf)
-    # x, y = mod[0], mod[1]
-    # print x
-    # print y
-    # centroids = mod.cluster_center_
-    # mod_labels = mod.labels_
-    # plt.scatter(x, y)
-    # plt.show()
-    X = tfidf.todense()
-    tsne_mod = TSNE(n_components=20, verbose=1, init='pca')
-    coords = tsne_mod.fit_transform(X)
-    x, y = coords[:,0], coords[:, 1]
-    plt.scatter(x, y, cmap=plt.cm.Spectral)
+
+    svd = TruncatedSVD(algorithm='randomized', random_state=42)
+    X_new = svd.fit_transform(tfidf)
+    tsne_mod = TSNE(n_components=2, verbose=1, random_state=0, perplexity=40)
+    coords = tsne_mod.fit_transform(X_new)
+    x, y = coords[:, 0], coords[:, 1]
+    # coordinates = pd.DataFrame({'X_coord': x, 'y_coord':y})
+    # coordinates.to_csv('tsne_coordinates.csv', index=False, index_label=None)
+    plt.scatter(x, y, alpha=0.5, cmap=plt.cm.Spectral)
     plt.show()
 
 if __name__ == "__main__":

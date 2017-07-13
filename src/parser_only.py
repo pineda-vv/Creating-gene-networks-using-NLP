@@ -34,5 +34,5 @@ if __name__ == "__main__":
     # abstract_dataframe("../capstone_files/pubmed_result_plos_one.txt")
     # abstract_dataframe("../capstone_files/nature_genetics_all.txt")
     """genetics search term - filter reviews and last 5 years"""
-    # abstract_dataframe("genetics_search_reviews_5years.txt")
-    abstract_dataframe("../capstone_files/metabolism_5year_reviews.txt")
+    # abstract_dataframe("..capstone/genetics_search_reviews_5years.txt")
+    # abstract_dataframe("../capstone_files/metabolism_5year_reviews.txt")

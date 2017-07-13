@@ -74,7 +74,7 @@ def _tokenize_abstract(abstract):
     return ' '.join(clean_words)
 
 def _generator():
-    """gene names generator"""
+    """gene names generator from two files"""
     filename_1 = 'gene.txt'
     filename_2 = 'geneSynonym.txt'
     gene_set_1 = gene_names(filename_1)
