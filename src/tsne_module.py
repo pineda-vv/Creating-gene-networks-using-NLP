@@ -14,7 +14,7 @@ import seaborn as sns
 """Code from medline_reader streamlined for clustering purposes"""
 def abstract_dataframe(filename):
     """
-    Input - file of Medline text output from Pubmed
+    Input - file1 of Medline text output from Pubmed
     Output - DataFrame with PMID, Abstract, and Tokenized Abstract
     """
     pmid_ab_dict = medline_parser(filename)
