@@ -1,57 +1,113 @@
 import psycopg2 as pg
 import networkx as nx
-from collections import defaultdict
+from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 from gephistreamer import graph
 from gephistreamer import streamer
 import numpy as np
 import pandas as pd
+import pygraphviz
+from networkx.drawing.nx_agraph import graphviz_layout
 
 def db_search():
     # Connect to an existing database
     conn = pg.connect("dbname=capstoneproject user=victorpineda")
     # Open a cursor to perform database operations
     cur = conn.cursor()
-    gene = raw_input("Gene name :")
+    query0 = "SELECT gene_name from gene_pmid;"
+    cur.execute(query0)
+    gene_list = cur.fetchall()
+    gene_set = set(tup[0] for tup in gene_list)
+
+    gene_quest = False
+    while gene_quest == False:
+        gene_input = raw_input("Gene name :")
+        gene = gene_input.lower()
+        if gene in gene_set:
+            gene_quest = True
     query = "SELECT pmid FROM gene_pmid WHERE gene_name = '" + gene + "';"
+    cur.execute(query)
+    pmid_list = cur.fetchall()
+    titles = []
+    for pmid in pmid_list:
+        art_query = "SELECT title from articles where pmid = {}".format(pmid[0])
+        cur.execute(art_query)
+        title = cur.fetchone()
+        pm_title = (int(pmid[0]), title[0])
+        titles.append(pm_title)
+    print "Five relevant reviews"
+    print "=" * 20
+    if len(titles) < 5:
+        for tup in titles:
+            print tup
+    else:
+        for tup in titles[:5]:
+            print tup
     query2 = "SELECT gene_a, gene_b FROM combinations WHERE gene_a = '" + gene + "';"
     cur.execute(query2)
     ret = cur.fetchall()
-    # gephi_streamer(ret)
-    # ret_nx = {}
-    # gene_list = []
-    # for tup in ret:
-    #     gene_list.append(tup[1])
-    # ret_nx[gene] = gene_list
-    feed = np.array(ret)
-    df = pd.DataFrame(feed, columns=['gene_a', 'gene_b'])
-    network_graph(df, 'gene_a', 'gene_b')
-
+    ret_dict = Counter(ret)
+    ret_arr = [(k[0], k[1], v) for k, v in ret_dict.items()]
+    feed = np.array(ret_arr)
+    df = pd.DataFrame(feed, columns=['gene_a', 'gene_b', 'count'])
+    # network_graph(df, 'gene_a', 'gene_b', 'count')
+    weighted_network_graph(ret_dict)
     # cur.fetchone()
 
-
-    # Make the changes to the database persistent
-    conn.commit()
 
     # Close communication with the database
     cur.close()
     conn.close()
 
-# def gephi_streamer(tup_list):
-#     streamer.GephiWS(hostname="localhost", port=8080, workspace="workspace0")
-#     stream = streamer.Streamer(streamer.GephiWS())
-#     for tup in tup_list:
-#         stream.add_node(tup)
-#     stream.commit()
-
-def network_graph(df, col1, col2):
+def network_graph(df, col1, col2, col3):
     """builds and visualizes networkx Graph for gene networks"""
-    G = nx.from_pandas_dataframe(df, col1, col2)
+    G = nx.from_pandas_dataframe(df, col1, col2, edge_attr=col3)
     plt.figure(num=None, figsize=(16, 16), dpi=80, facecolor='w', edgecolor='c')
-    nx.draw(G, with_labels=True, node_size=800, alpha=0.5, edge_color='c', cmap=plt.cm.Spectral)
+    nx.draw(G, pos=graphviz_layout(G), with_labels=True, node_size=1600, cmap=plt.cm.Spectral,
+        node_color=range(len(G)),
+        prog='dot', font_color='k', font_weight='bold')
+    nx_draw_edges(G)
     plt.show()
 
+def weighted_network_graph(counter_dict):
+    G = nx.Graph()
+    for k, v in counter_dict.items():
+        G.add_edge(k[0], k[1], weight = v)
+    elarge = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] > 5]
+    emedium = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] > 1 and d['weight'] < 4]
+    esmall = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] == 1]
+    pos = graphviz_layout(G)
+    plt.figure(num=None, figsize=(16, 16), dpi=80, facecolor='w', edgecolor='c')
+    nx.draw_networkx_nodes(G, pos
+                    , node_size=1600, with_labels=True
+                    , node_color=range(len(G))
+                    , cmap=plt.cm.Spectral
+                )
+    nx.draw_networkx_edges(G, pos
+                    , edgelist=elarge
+                    , width=5
+                )
+    nx.draw_networkx_edges(G, pos
+                    , edgelist=emedium
+                    , width=2
+                    , edge_color='b'
+                    , alpha=0.7
+                )
+    nx.draw_networkx_edges(G, pos
+                    , edgelist=esmall
+                    , width=1,alpha=0.5
+                    , edge_color='r'
+                    , style='dashed'
+                )
+    nx.draw_networkx_labels(G,pos, font_size=12
+                    , font_family='sans-serif'
+                    , font_color='k'
+                    , font_weight='bold'
+                )
+    plt.axis('off')
+    # plt.savefig("../data/weighted_ppard.png") # save as png
+    plt.show()
 if __name__ == "__main__":
     db_search()
 
