@@ -1,6 +1,7 @@
 # Creating gene-association networks from text analysis of Pubmed abstracts
 ## A capstone project for the Galvanize Data Science Immersive
 
+#### Gene Network Graph derived from abstracts taken from five years of metabolism review articles
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/full_graph.png)
 
 ### Business Understanding
