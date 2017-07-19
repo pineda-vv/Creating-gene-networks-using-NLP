@@ -20,21 +20,21 @@ import networkx as nx
 
 def abstract_dataframe(filename):
     """
-    Input - file of Medline text output from Pubmed
+    Input - file of Medline text output from Pubmed, text file of gene names
     Output - DataFrame with PMID, Abstract, and Tokenized Abstract
+    Output - gene dict of lists for networkx
     """
     pmid_ab_dict = medline_parser(filename)
     df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
     df.columns = ['PMID', 'Abstract']
     """
     Parallelized tokenizer and gene pairs functions gene-network analysis.
-    Original code used are commented out
     """
     df = parallel_tokenizer(df)
     df = parallel_genepairs(df)
     """create dictionary for networx_work"""
-    df = topic_extraction(df, 'Abstract') # after topic extraction
-    df.to_csv('metabolism_5years_tokenized.csv')
+    df = topic_extraction(df, 'Abstract') # after topic extraction adds labels
+    # df.to_csv('metabolism_5years_tokenized.csv')
     gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
     network_graph(gene_dict)
 

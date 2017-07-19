@@ -2,15 +2,14 @@ import psycopg2 as pg
 import networkx as nx
 from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
+plt.style.use('ggplot')
 import seaborn as sns
-from gephistreamer import graph
-from gephistreamer import streamer
 import numpy as np
 import pandas as pd
 import pygraphviz
 from networkx.drawing.nx_agraph import graphviz_layout
 
-def db_search():
+def db_search(topic_dict):
     # Connect to an existing database
     conn = pg.connect("dbname=capstoneproject user=victorpineda")
     # Open a cursor to perform database operations
@@ -30,20 +29,39 @@ def db_search():
     cur.execute(query)
     pmid_list = cur.fetchall()
     titles = []
+    label_counts = []
     for pmid in pmid_list:
-        art_query = "SELECT title from articles where pmid = {}".format(pmid[0])
+        art_query = "SELECT title, label_id from articles where pmid = {}".format(pmid[0])
         cur.execute(art_query)
-        title = cur.fetchone()
-        pm_title = (int(pmid[0]), title[0])
+        title, label_id = cur.fetchone()
+        label_counts.append(int(label_id))
+        pm_title = (int(pmid[0]), title, int(label_id))
         titles.append(pm_title)
-    print "Five relevant reviews"
-    print "=" * 20
-    if len(titles) < 5:
-        for tup in titles:
-            print tup
-    else:
-        for tup in titles[:5]:
-            print tup
+    label_dict = Counter(label_counts)
+    D = {}
+    for k, v in label_dict.items():
+        D[topic_dict[k]] = v
+    gene_format = gene.capitalize()
+    bar_title = 'Article Count per Topic Returned for the gene {}'.format(gene_format)
+    # fig, ax = plt.subplots(figsize=(12, 12))
+    plt.figure(num=None, figsize=(12, 8), dpi=80, facecolor='w')
+    plt.barh(range(len(D)), D.values(), align='center')
+    plt.title(bar_title, fontsize=18)
+    plt.xlabel('Number of Articles', fontsize=12)
+    plt.xticks(fontsize=12)
+    plt.xlim(0, 20)
+    plt.yticks(range(len(D)), D.keys(), fontsize=12)
+    plt.show()
+    for title in titles:
+        print title
+    # print "Five relevant reviews"
+    # print "=" * 20
+    # if len(titles) < 5:
+    #     for tup in titles:
+    #         print tup
+    # else:
+    #     for tup in titles[:5]:
+    #         print tup
     query2 = "SELECT gene_a, gene_b FROM combinations WHERE gene_a = '" + gene + "';"
     cur.execute(query2)
     ret = cur.fetchall()
@@ -54,8 +72,6 @@ def db_search():
     # network_graph(df, 'gene_a', 'gene_b', 'count')
     weighted_network_graph(ret_dict)
     # cur.fetchone()
-
-
     # Close communication with the database
     cur.close()
     conn.close()
@@ -74,42 +90,54 @@ def weighted_network_graph(counter_dict):
     G = nx.Graph()
     for k, v in counter_dict.items():
         G.add_edge(k[0], k[1], weight = v)
-    elarge = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] > 5]
+    elarge = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] >= 5]
     emedium = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] > 1 and d['weight'] < 4]
     esmall = [(u,v) for (u,v,d) in G.edges(data=True) if d['weight'] == 1]
     pos = graphviz_layout(G)
-    plt.figure(num=None, figsize=(16, 16), dpi=80, facecolor='w', edgecolor='c')
+    # pos = nx.spring_layout(G)
+    # pos = nx.spectral_layout(G)
+    # pos = nx.random_layout(G)
+    # pos = nx.shell_layout(G)
+    plt.figure(num=None
+            , figsize=(16, 16)
+            , dpi=80
+            , facecolor='w'
+            , edgecolor='c'
+        )
     nx.draw_networkx_nodes(G, pos
-                    , node_size=1600, with_labels=True
-                    , node_color=range(len(G))
-                    , cmap=plt.cm.Spectral
+                    , node_size=1600
+                    , with_labels=True
+                    , node_color='b'
                 )
     nx.draw_networkx_edges(G, pos
                     , edgelist=elarge
                     , width=5
+                    , alpha=0.5
+                    , edge_color='k'
                 )
     nx.draw_networkx_edges(G, pos
                     , edgelist=emedium
-                    , width=2
-                    , edge_color='b'
-                    , alpha=0.7
+                    , width=1
+                    , edge_color='k'
+                    , alpha=1.0
                 )
     nx.draw_networkx_edges(G, pos
                     , edgelist=esmall
-                    , width=1,alpha=0.5
-                    , edge_color='r'
+                    , width=1
+                    , alpha=0.5
+                    , edge_color='k'
                     , style='dashed'
                 )
     nx.draw_networkx_labels(G,pos, font_size=12
                     , font_family='sans-serif'
-                    , font_color='k'
+                    , font_color='w'
                     , font_weight='bold'
                 )
+    # nx.write_gml(G, 'brca1.gml')
     plt.axis('off')
-    # plt.savefig("../data/weighted_ppard.png") # save as png
+    # plt.savefig("../data/weighted_brca1") # save as png
     plt.show()
 if __name__ == "__main__":
-    db_search()
 
     topic_dict = {0: ' Plant Mechanisms',
              1: ' Clinical Trials',
@@ -152,3 +180,4 @@ if __name__ == "__main__":
              'Stem Cell Growth/Survival': 9,
              'Stem Cells and immune function': 3,
              'Transcriptional Mechanisms': 10}
+    db_search(topic_dict=topic_dict)
