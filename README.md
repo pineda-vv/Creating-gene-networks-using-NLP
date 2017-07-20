@@ -27,8 +27,9 @@ The abstracts extracted from pubmed were analyzed in two ways.  Firstly, each ab
 
 TruncatedSVD/TSNE clustering of abstracts
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/tsne_1.png)
-Example graph centered on the brca2 gene, topic list of articles about brca2
+Graph centered on the brca2 gene
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/brca2_new.png)
+Topic list of articles about brca2
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/brca2_topics.png)
 
 
