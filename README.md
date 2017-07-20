@@ -25,11 +25,11 @@ The data pipeline for the text analysis begins with a Pubmed download of a forma
 ---
 The abstracts extracted from pubmed were analyzed in two ways.  Firstly, each abstract went through a tokenizer (NLTK) and these tokenized abstracts were used to mine for the gene pairs.  Secondly, the abstracts were clustered into twenty categories mined from topic analysis using non-negative matrix factorization (NMF).  Twenty categories were chosen as an optimal number of categories/topics that had very little if any overlap.  
 
-TruncatedSVD/TSNE clustering of abstracts
+#### TruncatedSVD/TSNE clustering of abstracts
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/tsne_1.png)
-Graph centered on the brca2 gene
+#### Graph centered on the brca2 gene
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/brca2_new.png)
-Topic list of articles about brca2
+#### Topic list of articles about brca2
 ![Alt text](https://github.com/pineda-vv/Creating-gene-networks-using-NLP/blob/master/data/brca2_topics.png)
 
 
