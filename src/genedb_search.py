@@ -62,9 +62,10 @@ def db_search(topic_dict):
     # else:
     #     for tup in titles[:5]:
     #         print tup
-    query2 = "SELECT gene_a, gene_b FROM combinations WHERE gene_a = '" + gene + "';"
+    query2 = "SELECT gene_a, gene_b FROM combinations WHERE gene_a = '" + gene + "' or gene_b = '" + gene + "';"
     cur.execute(query2)
     ret = cur.fetchall()
+    print ret
     ret_dict = Counter(ret)
     ret_arr = [(k[0], k[1], v) for k, v in ret_dict.items()]
     feed = np.array(ret_arr)
@@ -83,7 +84,7 @@ def network_graph(df, col1, col2, col3):
     nx.draw(G, pos=graphviz_layout(G), with_labels=True, node_size=1600, cmap=plt.cm.Spectral,
         node_color=range(len(G)),
         prog='dot', font_color='k', font_weight='bold')
-    nx_draw_edges(G)
+    # nx_draw_edges(G)
     plt.show()
 
 def weighted_network_graph(counter_dict):

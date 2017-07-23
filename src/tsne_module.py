@@ -21,18 +21,6 @@ def abstract_dataframe(filename):
     df = pd.DataFrame.from_dict(pmid_ab_dict, orient='index').reset_index()
     df.columns = ['PMID', 'Abstract']
     df = topic_extraction(df, 'Abstract') # after topic extraction
-    # df.to_csv('../data/metab_LDA_NMF_labels', index=False, index_label=None)
-    # tsne_algorithm(tfidf)
-    # # """
-    # Parallelized tokenizer and gene pairs functions gene-network analysis.
-    # Original code used are commented out
-    # """
-    # df = parallel_tokenizer(df)
-    # df = parallel_genepairs(df)
-    # """create dictionary for networx_work"""
-    # gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
-    # network_graph(gene_dict)
-
 
 def medline_parser(filename):
     """extracts info from medline text file from pubmed"""
@@ -55,7 +43,6 @@ def topic_extraction(df, col_name):
                                        max_features=200,
                                        stop_words='english')
     tfidf = tfidf_vectorizer.fit_transform(df[col_name])
-    print tfidf.shape
     # tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2,
     #                                 max_features=200,
     #                                 stop_words='english')
@@ -70,15 +57,15 @@ def topic_extraction(df, col_name):
     df['labels'] = nmf_w.argmax(axis=1) # this was the right code to get labels/clusters
     labels = df['labels'].values
     X_short = tfidf[:1000, :]
-    clustering_algorithm(nmf_w_short, labels)
+
 
     # tsne_algorithm(tfidf) # feed the tsne algorithm
     # sns.distplot(df['labels'], kde=True)
     # plt.show()
-    # print("\nTopics in NMF model:")
-    # print_top_words(nmf, tfidf_feature_names)
-
-
+    print("\nTopics in NMF model:")
+    print_top_words(nmf, tfidf_feature_names)
+    clustering_algorithm(nmf_w_short, labels)
+        """uncomment to LDA topics"""
     # lda = LatentDirichletAllocation(n_topics=40, max_iter=5,
     #                             learning_method='online',
     #                             learning_offset=50.,
@@ -107,8 +94,6 @@ def clustering_algorithm(tfidf, labels):
     tsne_mod = TSNE(n_components=2, verbose=1, random_state=0, perplexity=40)
     coords = tsne_mod.fit_transform(X_new)
     x, y = coords[:, 0], coords[:, 1]
-    # coordinates = pd.DataFrame({'X_coord': x, 'y_coord':y})
-    # coordinates.to_csv('tsne_coordinates.csv', index=False, index_label=None)
     plt.scatter(x, y, alpha=0.5, cmap=plt.cm.Spectral)
     plt.show()
 
@@ -118,4 +103,4 @@ if __name__ == "__main__":
     # abstract_dataframe("../capstone_files/pubmed_result_plos_med.txt")
     # abstract_dataframe("../capstone_files/pubmed_result_plos_one.txt")
     # abstract_dataframe("../capstone_files/nature_genetics_all.txt")
-    abstract_dataframe("../capstone_files/metabolism_5year_reviews.txt")
+    abstract_dataframe("../capstone_files/five_years_reviews_all.txt")
