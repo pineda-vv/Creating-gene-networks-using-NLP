@@ -29,15 +29,16 @@ def abstract_dataframe(filename):
     df.columns = ['PMID', 'Abstract']
     """
     Parallelized tokenizer and gene pairs functions gene-network analysis.
+    returns a dataframe with tokenized abstracts, gene_pairs and labels
     """
-    df = parallel_tokenizer(df)
-    df = parallel_genepairs(df)
+    # df = parallel_tokenizer(df)
+    # df = parallel_genepairs(df)
     """create dictionary for networx_work"""
     df = topic_extraction(df, 'Abstract') # after topic extraction adds labels
-    # df.to_csv('metabolism_5years_tokenized.csv')
-    gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
-    network_graph(gene_dict)
-
+    # df.to_csv('with_lda_labels.csv')  # uncomment if you want to save the file
+    # gene_dict = {entry[0]:entry[1:] for entry in df['gene_pairs'] if entry != None}
+    # network_graph(gene_dict) # uncomment if you want to generate a networkx graph
+    return df
 
 def medline_parser(filename):
     """extracts info from medline text file from pubmed"""
@@ -159,7 +160,10 @@ def topic_extraction(df, col_name):
                                 random_state=0,
                                 n_jobs=-1)
     lda.fit(tf)
-    df['perplexity'] = lda.perplexity(tf)
+    doc_topic_distrib = lda.transform(tf)
+    lda_labels = doc_topic_distrib.argmax(axis=1)
+    print lda_labels[:100]
+    df['lda_labels'] = lda_labels
     print("\nTopics in LDA model:")
     tf_feature_names = tf_vectorizer.get_feature_names()
     print_top_words(lda, tf_feature_names)
@@ -181,4 +185,4 @@ if __name__ == "__main__":
     # abstract_dataframe("../capstone_files/nature_genetics_all.txt")
     """genetics search term - filter reviews and last 5 years"""
     # abstract_dataframe("genetics_search_reviews_5years.txt")
-    abstract_dataframe("metabolism_5year_reviews.txt")
+    abstract_dataframe("../capstone_files/metabolism_5year_reviews.txt")
